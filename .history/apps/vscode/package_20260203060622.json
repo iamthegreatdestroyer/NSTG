@@ -1,0 +1,83 @@
+{
+  "name": "nstg-vscode",
+  "displayName": "NSTG - Negative Space Test Generator",
+  "description": "VS Code extension for negative space test generation",
+  "version": "0.0.0",
+  "publisher": "iamthegreatdestroyer",
+  "license": "AGPL-3.0-or-later",
+  "icon": "assets/icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Testing",
+    "Programming Languages",
+    "Linters"
+  ],
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:javascriptreact",
+    "onLanguage:typescriptreact",
+    "onCommand:nstg.generateTests"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "nstg.generateTests",
+        "title": "NSTG: Generate Negative Space Tests"
+      },
+      {
+        "command": "nstg.analyzeFunction",
+        "title": "NSTG: Analyze Function Coverage"
+      },
+      {
+        "command": "nstg.showNegativeSpace",
+        "title": "NSTG: Show Negative Space Visualization"
+      }
+    ],
+    "configuration": {
+      "title": "NSTG",
+      "properties": {
+        "nstg.maxNegativeSpaceRegions": {
+          "type": "number",
+          "default": 1000,
+          "description": "Maximum number of negative space regions to analyze"
+        },
+        "nstg.maxBoundaryTests": {
+          "type": "number",
+          "default": 100,
+          "description": "Maximum number of boundary tests to generate per function"
+        },
+        "nstg.timeout": {
+          "type": "number",
+          "default": 30000,
+          "description": "Analysis timeout in milliseconds"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
+    "dev": "npm run build -- --sourcemap --watch",
+    "package": "vsce package",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@nstg/core": "workspace:*",
+    "@nstg/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@nstg/config-eslint": "workspace:*",
+    "@nstg/config-typescript": "workspace:*",
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.19.11",
+    "typescript": "^5.3.3",
+    "vsce": "^2.15.0",
+    "vitest": "^1.2.0"
+  }
+}

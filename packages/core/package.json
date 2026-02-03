@@ -1,0 +1,36 @@
+{
+  "name": "@nstg/core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Core engine for negative space test generation",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@nstg/shared": "workspace:*",
+    "@nstg/smt-solver": "workspace:*",
+    "@nstg/boundary-catalog": "workspace:*"
+  },
+  "devDependencies": {
+    "@nstg/config-eslint": "workspace:*",
+    "@nstg/config-typescript": "workspace:*",
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0"
+  }
+}

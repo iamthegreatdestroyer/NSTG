@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Discussions
+    url: https://github.com/iamthegreatdestroyer/NSTG/discussions
+    about: Ask questions and discuss ideas
+  - name: 📖 Documentation
+    url: https://github.com/iamthegreatdestroyer/NSTG/tree/main/docs
+    about: Check the documentation
+  - name: 🔒 Security Issue
+    url: mailto:sgbilod@gmail.com
+    about: Report a security vulnerability privately

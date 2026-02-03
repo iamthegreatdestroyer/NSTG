@@ -1,0 +1,35 @@
+{
+  "name": "@nstg/smt-solver",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Z3 SMT solver integration for constraint solving",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@nstg/shared": "workspace:*",
+    "z3-solver": "^4.12.2"
+  },
+  "devDependencies": {
+    "@nstg/config-eslint": "workspace:*",
+    "@nstg/config-typescript": "workspace:*",
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0"
+  }
+}
