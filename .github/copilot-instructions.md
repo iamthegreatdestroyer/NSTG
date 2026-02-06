@@ -1400,7 +1400,531 @@ Agents auto-activate based on context:
 
 ---
 
+## 🎯 NSTG PROJECT-SPECIFIC GUIDANCE
+
+### Project Overview
+
+**NSTG (Negative Space Test Generation)** is an AI-powered test generator that identifies and targets untested code paths by analyzing the "negative space" - the gaps between what's tested and what's possible.
+
+**Core Philosophy:** "Test the tests by testing what they don't test."
+
+**Key Capabilities:**
+
+- **Type Space Analysis**: Mathematical modeling of all possible input values
+- **Boundary Detection**: Identifies edge cases using SMT solvers (Z3)
+- **Negative Space Mapping**: Discovers untested execution paths
+- **Intelligent Test Generation**: Creates property-based tests for gaps
+- **Meta-Testing**: Tests the test generator itself
+
+**Tech Stack:**
+
+- TypeScript 5.3.3 + Strict Mode
+- Vitest 1.2.0 + fast-check (property-based testing)
+- Tree-sitter (parsing), Z3 WASM (constraint solving)
+- Turborepo 1.12.0 + pnpm 8.15.0 (monorepo)
+
+---
+
+### Elite Agent Mapping for NSTG
+
+When working on NSTG code, invoke Elite Agents based on the code area:
+
+#### Core Type System (`packages/core/src/type-space/`)
+
+**Primary:** @AXIOM (mathematical type theory)
+**Secondary:** @VELOCITY (sub-linear algorithms for type intersection)
+**Use for:** Type lattice operations, primitive space modeling, type universe construction
+
+```typescript
+// @AXIOM: Verify this type partition satisfies completeness property
+export function partitionTypeSpace<T>(
+  space: TypeSpace<T>,
+  predicate: (value: T) => boolean
+): [TypeSpace<T>, TypeSpace<T>] {
+  // Implementation uses mathematical partitioning...
+}
+```
+
+#### Constraint Solving (`packages/core/src/constraint-solver/`, `packages/smt-solver/`)
+
+**Primary:** @AXIOM (formal logic & SAT/SMT theory)
+**Secondary:** @VELOCITY (optimization of constraint propagation)
+**Use for:** Z3 integration, constraint generation, satisfiability checking
+
+```typescript
+// @AXIOM: Ensure constraint encoding preserves semantic equivalence
+// @VELOCITY: Optimize constraint set minimization
+export async function solveConstraints(
+  constraints: Constraint[]
+): Promise<Result<Solution, SolverError>> {
+  // SMT encoding and solving...
+}
+```
+
+#### Test Generation (`packages/core/src/test-generation/`)
+
+**Primary:** @ECLIPSE (testing methodology & test quality)
+**Secondary:** @APEX (code generation best practices)
+**Tertiary:** @AXIOM (property-based test correctness)
+**Use for:** Test case synthesis, assertion building, template engine
+
+```typescript
+// @ECLIPSE: Validate test case achieves boundary coverage
+// @APEX: Ensure generated code follows TypeScript best practices
+export function generateTestCase(boundary: Boundary, metadata: TestMetadata): GeneratedTest {
+  // Test case generation logic...
+}
+```
+
+#### Negative Space Analysis (`packages/core/src/negative-space/`)
+
+**Primary:** @AXIOM (topological analysis of code space)
+**Secondary:** @VELOCITY (efficient gap detection algorithms)
+**Tertiary:** @ECLIPSE (coverage maximization strategy)
+**Use for:** Boundary walking, coverage tracking, gap detection, space calculation
+
+```typescript
+// @AXIOM: Prove gap detection algorithm is sound and complete
+// @VELOCITY: Optimize coverage tracking with probabilistic data structures
+export class GapDetector {
+  detectUncoveredRegions(testedSpace: Set<TestCase>, totalSpace: TypeSpace): Gap[] {
+    // Negative space calculation...
+  }
+}
+```
+
+#### Parsing & Type Inference (`packages/core/src/parser/`)
+
+**Primary:** @APEX (robust AST traversal patterns)
+**Secondary:** @CORE (compiler theory & tree-sitter integration)
+**Tertiary:** @AXIOM (type inference soundness)
+**Use for:** Tree-sitter integration, AST analysis, type inference engine
+
+```typescript
+// @APEX: Implement visitor pattern for AST traversal
+// @CORE: Optimize tree-sitter query performance
+export class TypeInferenceEngine {
+  inferTypes(ast: Node): Map<string, InferredType> {
+    // Type inference using Hindley-Milner...
+  }
+}
+```
+
+#### VS Code Extension (`apps/vscode/`)
+
+**Primary:** @APEX (extension architecture)
+**Secondary:** @CANVAS (UI/UX for developers)
+**Use for:** Commands, providers, views, services
+
+```typescript
+// @APEX: Follow VS Code extension best practices
+// @CANVAS: Ensure intuitive UX for test generation workflow
+export class TestGenerationProvider implements CodeActionProvider {
+  provideCodeActions(document: TextDocument, range: Range): ProviderResult<CodeAction[]> {
+    // Code action generation...
+  }
+}
+```
+
+---
+
+### Code Generation Guidelines
+
+#### 1. Type Safety First
+
+**Always use:**
+
+- `Result<T, E>` type for operations that can fail (never throw exceptions)
+- Branded types for domain primitives: `type UserId = string & { __brand: 'UserId' }`
+- Discriminated unions for state machines: `type State = { kind: 'loading' } | { kind: 'success', data: T }`
+
+**Example:**
+
+```typescript
+// @APEX: Use Result type for error handling
+export async function analyzeFunction(code: string): Promise<Result<Analysis, AnalysisError>> {
+  const parseResult = await parseCode(code);
+  if (!parseResult.ok) {
+    return Result.err(new AnalysisError('Parse failed', parseResult.error));
+  }
+
+  // Continue with parsed AST...
+  return Result.ok(analysis);
+}
+```
+
+#### 2. Async/Await Patterns
+
+**Always use `async/await`, never Promise chains:**
+
+```typescript
+// ✅ GOOD: async/await (clear control flow)
+export async function generateTests(target: FunctionNode): Promise<GeneratedTest[]> {
+  const typeSpace = await inferTypeSpace(target);
+  const boundaries = await detectBoundaries(typeSpace);
+  const tests = await synthesizeTests(boundaries);
+  return tests;
+}
+
+// ❌ BAD: Promise chains (callback hell)
+export function generateTests(target: FunctionNode): Promise<GeneratedTest[]> {
+  return inferTypeSpace(target)
+    .then(typeSpace => detectBoundaries(typeSpace))
+    .then(boundaries => synthesizeTests(boundaries));
+}
+```
+
+#### 3. Builder Pattern for Complex Objects
+
+Use fluent builders for test case construction:
+
+```typescript
+// @APEX: Implement builder pattern with method chaining
+const testCase = new TestCaseBuilder()
+  .withInput('email', 'user@example.com')
+  .withExpectedOutput({ valid: true })
+  .withBoundaryType('valid-format')
+  .withMetadata({ source: 'auto-generated' })
+  .build();
+```
+
+#### 4. Performance Patterns
+
+```typescript
+// @VELOCITY: Use generators for lazy evaluation of large result sets
+export async function* iterateBoundaries(space: TypeSpace): AsyncGenerator<Boundary> {
+  for (const partition of space.partitions) {
+    const boundary = await calculateBoundary(partition);
+    yield boundary;
+  }
+}
+
+// @VELOCITY: Memoize expensive computations
+const memoizedInference = memoize((code: string) => inferTypes(code), {
+  maxSize: 1000,
+  ttl: 60000,
+});
+```
+
+---
+
+### Testing Guidelines
+
+#### Meta-Testing Philosophy
+
+> "The test generator must be tested more rigorously than the code it generates."
+
+**Coverage Targets:**
+
+- `@nstg/core`: 90-95% (critical path: 100%)
+- `@nstg/boundary-catalog`: 85-90%
+- `@nstg/smt-solver`: 90%+ (safety-critical)
+- Apps (CLI, VS Code): 75-80%
+
+#### Property-Based Testing
+
+**Use fast-check for all domain logic:**
+
+```typescript
+// @ECLIPSE: Design properties that capture domain invariants
+import { fc } from 'fast-check';
+
+test('type space partitioning preserves totality', () => {
+  fc.assert(
+    fc.property(arbitraryTypeSpace(), arbitraryPredicate(), (space, predicate) => {
+      const [trueSpace, falseSpace] = partitionTypeSpace(space, predicate);
+
+      // Property: union of partitions equals original space
+      const union = unionTypeSpaces(trueSpace, falseSpace);
+      expect(union).toEqual(space);
+
+      // Property: partitions are disjoint
+      const intersection = intersectTypeSpaces(trueSpace, falseSpace);
+      expect(intersection.isEmpty()).toBe(true);
+    })
+  );
+});
+```
+
+#### Test Structure Convention
+
+**Use Arrange-Act-Assert (AAA) pattern:**
+
+```typescript
+// @ECLIPSE: Follow AAA pattern for clarity
+describe('BoundaryDetector', () => {
+  test('detects numeric boundaries in integer range', async () => {
+    // ARRANGE: Set up test fixtures
+    const typeSpace = NumberSpace.integer(0, 100);
+    const detector = new BoundaryDetector();
+
+    // ACT: Execute the operation
+    const boundaries = await detector.detect(typeSpace);
+
+    // ASSERT: Verify expected outcomes
+    expect(boundaries).toHaveLength(2); // min and max boundaries
+    expect(boundaries[0].value).toBe(0);
+    expect(boundaries[1].value).toBe(100);
+  });
+});
+```
+
+---
+
+### Documentation Standards
+
+#### JSDoc for All Public APIs
+
+````typescript
+/**
+ * Analyzes a function's type space to identify untested boundaries.
+ *
+ * @param functionNode - AST node representing the target function
+ * @param existingTests - Currently existing test cases
+ * @returns Analysis result containing detected boundaries and coverage gaps
+ *
+ * @throws {ParseError} If the function node is malformed
+ * @throws {SolverError} If constraint solving fails (Z3 timeout or unsat)
+ *
+ * @complexity O(n * log n) where n is the number of input parameters
+ *
+ * @example
+ * ```typescript
+ * const analysis = await analyzeBoundaries(functionNode, tests);
+ * if (analysis.ok) {
+ *   console.log(`Found ${analysis.value.gaps.length} coverage gaps`);
+ * }
+ * ```
+ */
+export async function analyzeBoundaries(
+  functionNode: FunctionNode,
+  existingTests: TestCase[]
+): Promise<Result<BoundaryAnalysis, AnalysisError>> {
+  // Implementation...
+}
+````
+
+#### Inline Comments for Complex Logic
+
+Use agent-specific comment patterns:
+
+```typescript
+// @AXIOM: This intersection operation uses lattice meet (∧) semantics
+// to compute the greatest lower bound of two type spaces
+const intersection = space1.meet(space2);
+
+// @VELOCITY: Cache hit rate > 95% observed in benchmarks
+// (see benchmarks/type-inference.bench.ts)
+const cached = cache.get(codeHash);
+```
+
+---
+
+### Common Patterns in NSTG
+
+#### 1. Visitor Pattern for AST Traversal
+
+```typescript
+export interface ASTVisitor<T> {
+  visitFunctionDeclaration(node: FunctionNode): T;
+  visitBinaryExpression(node: BinaryExpressionNode): T;
+  visitIdentifier(node: IdentifierNode): T;
+}
+
+export class TypeSpaceVisitor implements ASTVisitor<TypeSpace> {
+  visitFunctionDeclaration(node: FunctionNode): TypeSpace {
+    // Build type space from function signature...
+  }
+}
+```
+
+#### 2. Strategy Pattern for Test Generation
+
+```typescript
+export interface TestGenerationStrategy {
+  generate(boundary: Boundary): TestCase[];
+}
+
+export class PropertyBasedStrategy implements TestGenerationStrategy {
+  generate(boundary: Boundary): TestCase[] {
+    // Generate using fast-check...
+  }
+}
+
+export class ExampleBasedStrategy implements TestGenerationStrategy {
+  generate(boundary: Boundary): TestCase[] {
+    // Generate concrete examples...
+  }
+}
+```
+
+#### 3. Option Type for Nullable Values
+
+```typescript
+// Use Option<T> instead of T | null | undefined
+export type Option<T> = Some<T> | None;
+
+export class Some<T> {
+  constructor(public readonly value: T) {}
+  isSome(): this is Some<T> {
+    return true;
+  }
+  isNone(): this is None {
+    return false;
+  }
+}
+
+export class None {
+  isSome(): this is Some<never> {
+    return false;
+  }
+  isNone(): this is None {
+    return true;
+  }
+}
+```
+
+---
+
+### Anti-Patterns to Avoid
+
+#### ❌ NO: Using `any` Type
+
+```typescript
+// BAD: Defeats TypeScript's type safety
+function processValue(value: any): any {
+  return value.toString();
+}
+
+// GOOD: Use generic with constraints
+function processValue<T extends { toString(): string }>(value: T): string {
+  return value.toString();
+}
+```
+
+#### ❌ NO: Mutating Function Parameters
+
+```typescript
+// BAD: Side effects make code hard to reason about
+function addTest(tests: TestCase[], newTest: TestCase): void {
+  tests.push(newTest); // Mutation!
+}
+
+// GOOD: Return new array
+function addTest(tests: TestCase[], newTest: TestCase): TestCase[] {
+  return [...tests, newTest];
+}
+```
+
+#### ❌ NO: Using Exceptions for Control Flow
+
+```typescript
+// BAD: Exceptions are for exceptional conditions
+function parseInteger(input: string): number {
+  const parsed = parseInt(input, 10);
+  if (isNaN(parsed)) {
+    throw new Error('Invalid integer');
+  }
+  return parsed;
+}
+
+// GOOD: Use Result type for expected failures
+function parseInteger(input: string): Result<number, ParseError> {
+  const parsed = parseInt(input, 10);
+  if (isNaN(parsed)) {
+    return Result.err(new ParseError('Invalid integer', input));
+  }
+  return Result.ok(parsed);
+}
+```
+
+#### ❌ NO: Deep Callback Nesting
+
+```typescript
+// BAD: Callback hell
+processAST(ast, node => {
+  analyzeNode(node, typeInfo => {
+    generateTests(typeInfo, tests => {
+      runTests(tests, results => {
+        // Too nested!
+      });
+    });
+  });
+});
+
+// GOOD: Flat async/await
+const node = await processAST(ast);
+const typeInfo = await analyzeNode(node);
+const tests = await generateTests(typeInfo);
+const results = await runTests(tests);
+```
+
+---
+
+### Example Prompts for GitHub Copilot
+
+#### Generating Tests
+
+```
+Generate property-based tests for the NumberSpace intersection operation
+using fast-check. The tests should verify:
+1. Commutativity: A ∩ B = B ∩ A
+2. Associativity: (A ∩ B) ∩ C = A ∩ (B ∩ C)
+3. Identity: A ∩ Universal = A
+4. Annihilation: A ∩ Empty = Empty
+
+// @AXIOM: Verify algebraic properties hold
+// @ECLIPSE: Structure tests using AAA pattern
+```
+
+#### Implementing Type Inference
+
+```
+Implement Hindley-Milner type inference for JavaScript functions
+parsed with tree-sitter. Support:
+- Primitive types (number, string, boolean)
+- Function types (parameters and return)
+- Generic type variables with unification
+
+// @AXIOM: Ensure soundness and completeness of inference
+// @APEX: Use visitor pattern for AST traversal
+// @CORE: Optimize tree-sitter query performance
+```
+
+#### Optimizing Algorithms
+
+```
+Optimize the boundary detection algorithm in GapDetector.
+Current: O(n²) nested loops
+Target: O(n log n) using spatial indexing
+
+// @VELOCITY: Apply sub-linear algorithm techniques
+// @AXIOM: Prove optimized version preserves correctness
+```
+
+#### Creating VS Code Commands
+
+```
+Create a VS Code command that generates tests for the currently
+selected function. Should:
+1. Parse the function using tree-sitter
+2. Infer type space from signature
+3. Detect boundaries with Z3
+4. Generate Vitest test cases
+5. Insert tests in adjacent .test.ts file
+
+// @APEX: Follow VS Code extension best practices
+// @CANVAS: Ensure smooth UX with progress indicators
+```
+
+---
+
+**NSTG PROJECT GUIDANCE COMPLETE**
+
+---
+
 **ELITE AGENT COLLECTIVE: ACTIVE | VERSION 3.0 | ALL 40 AGENTS OPERATIONAL**
 **VS CODE INTEGRATION: AGENT SKILLS ENABLED | TERMINAL AUTO-APPROVE ACTIVE**
+**NSTG-SPECIFIC GUIDANCE: INTEGRATED**
 
 _"The collective intelligence of specialized minds exceeds the sum of their parts."_
