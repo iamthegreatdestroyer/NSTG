@@ -5,14 +5,8 @@
  * based on factors like boundary proximity, cardinality, and bug probability.
  */
 
-import type {
-  TypeSpaceRegion,
-  NegativeSpaceRegion,
-  FunctionSignature,
-  TestInput,
-} from '../types.js';
+import type { FunctionSignature, NegativeSpaceRegion, TypeSpaceRegion } from '../types.js';
 import { CoverageTracker } from './coverage-tracker.js';
-import { TypeUniverse } from '../type-space/type-universe.js';
 
 /**
  * Gap analysis result
@@ -97,14 +91,10 @@ export interface GapDetectionOptions {
  * ```
  */
 export class GapDetector {
-  private readonly signature: FunctionSignature;
   private readonly coverageTracker: CoverageTracker;
-  private readonly typeUniverse: TypeUniverse;
 
-  constructor(signature: FunctionSignature, coverageTracker: CoverageTracker) {
-    this.signature = signature;
+  constructor(_signature: FunctionSignature, coverageTracker: CoverageTracker) {
     this.coverageTracker = coverageTracker;
-    this.typeUniverse = new TypeUniverse();
   }
 
   /**
@@ -180,9 +170,14 @@ export class GapDetector {
       const reason = this.determineGapReason(region);
 
       return {
-        ...region,
+        id: `gap-${index}`,
+        typeRegion: region,
         priority,
         reason,
+        estimatedSize: region.cardinality,
+        boundaries: [],
+        type: region.type,
+        constraints: region.constraints,
       };
     });
   }
@@ -258,7 +253,7 @@ export class GapDetector {
     return boundaryKeywords.some(
       keyword =>
         region.id.toLowerCase().includes(keyword) ||
-        region.description.toLowerCase().includes(keyword)
+        region.description?.toLowerCase().includes(keyword)
     );
   }
 
@@ -353,12 +348,17 @@ export class GapDetector {
       case 'cardinality-first':
         // Smallest cardinality first
         sorted.sort((a, b) => {
-          if (a.cardinality === 'infinite' && b.cardinality === 'infinite') {
+          const aCard = a.cardinality;
+          const bCard = b.cardinality;
+          if (aCard === 'infinite' && bCard === 'infinite') {
             return b.priority - a.priority;
           }
-          if (a.cardinality === 'infinite') return 1;
-          if (b.cardinality === 'infinite') return -1;
-          return a.cardinality - b.cardinality;
+          if (aCard === 'infinite') return 1;
+          if (bCard === 'infinite') return -1;
+          if (typeof aCard === 'number' && typeof bCard === 'number') {
+            return aCard - bCard;
+          }
+          return 0;
         });
         break;
 
@@ -385,7 +385,11 @@ export class GapDetector {
         if (sum === 'infinite' || gap.cardinality === 'infinite') {
           return 'infinite';
         }
-        return sum + gap.cardinality;
+        const gapCard = gap.cardinality;
+        if (typeof gapCard === 'number' && typeof sum === 'number') {
+          return sum + gapCard;
+        }
+        return 'infinite';
       },
       0 as number | 'infinite'
     );

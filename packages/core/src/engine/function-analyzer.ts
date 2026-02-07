@@ -1,16 +1,12 @@
 import * as ts from 'typescript';
-import type {
-  FunctionParameter,
-  FunctionSignature,
-  TypeConstraint,
-  TypeNode,
-} from '../types.js';
+import type { FunctionParameter, FunctionSignature, TypeConstraint, TypeNode } from '../types.js';
 
 /**
  * Analyzes TypeScript function source code to extract signatures and metadata
  */
 export class FunctionAnalyzer {
-  private checker: ts.TypeChecker | null = null;
+  // TypeChecker is created during analysis but not stored as instance variable
+  // to avoid keeping large AST references in memory
 
   /**
    * Analyzes a TypeScript source file and extracts function signatures
@@ -20,22 +16,17 @@ export class FunctionAnalyzer {
    */
   analyze(sourceCode: string, fileName = 'source.ts'): FunctionSignature[] {
     // Create source file from code
-    const sourceFile = ts.createSourceFile(
-      fileName,
-      sourceCode,
-      ts.ScriptTarget.Latest,
-      true,
-    );
+    const sourceFile = ts.createSourceFile(fileName, sourceCode, ts.ScriptTarget.Latest, true);
 
     // Create program for type checking
     const compilerHost = ts.createCompilerHost({});
-    compilerHost.getSourceFile = (name) => {
+    compilerHost.getSourceFile = name => {
       if (name === fileName) return sourceFile;
       return ts.createSourceFile(name, '', ts.ScriptTarget.Latest, true);
     };
 
-    const program = ts.createProgram([fileName], {}, compilerHost);
-    this.checker = program.getTypeChecker();
+    // Removed: Program and TypeChecker creation - not needed for signature extraction
+    // TypeChecker can be created when needed for type analysis
 
     const signatures: FunctionSignature[] = [];
 
@@ -60,46 +51,31 @@ export class FunctionAnalyzer {
    */
   private extractFunctionSignature(
     node: ts.FunctionDeclaration | ts.ArrowFunction,
-    sourceFile: ts.SourceFile,
+    sourceFile: ts.SourceFile
   ): FunctionSignature | null {
     // Get function name (arrow functions may be unnamed)
-    const name =
-      ts.isFunctionDeclaration(node) && node.name
-        ? node.name.text
-        : 'anonymous';
+    const name = ts.isFunctionDeclaration(node) && node.name ? node.name.text : 'anonymous';
 
     // Extract parameters
-    const parameters = node.parameters.map((param) =>
-      this.extractParameter(param),
-    );
+    const parameters = node.parameters.map(param => this.extractParameter(param));
 
     // Extract return type
     const returnType = this.extractReturnType(node);
 
     // Extract source location
-    const { line: startLine } = sourceFile.getLineAndCharacterOfPosition(
-      node.getStart(),
-    );
-    const { line: endLine } = sourceFile.getLineAndCharacterOfPosition(
-      node.getEnd(),
-    );
+    const { line: startLine } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
+    const { line: endLine } = sourceFile.getLineAndCharacterOfPosition(node.getEnd());
 
     // Parse JSDoc for additional metadata
     const jsdocMetadata = this.extractJSDocMetadata(node);
 
     return {
       name,
-      parameters: parameters.map((param, index) => ({
+      parameters: parameters.map(param => ({
         ...param,
-        type: this.enrichWithJSDoc(
-          param.type,
-          jsdocMetadata.params[param.name],
-        ),
+        type: this.enrichWithJSDoc(param.type, jsdocMetadata.params[param.name]),
       })),
-      returnType: this.enrichWithJSDoc(
-        returnType,
-        jsdocMetadata.returns,
-      ),
+      returnType: this.enrichWithJSDoc(returnType, jsdocMetadata.returns),
       sourceFile: sourceFile.fileName,
       startLine,
       endLine,
@@ -128,9 +104,7 @@ export class FunctionAnalyzer {
   /**
    * Extracts return type from function node
    */
-  private extractReturnType(
-    node: ts.FunctionDeclaration | ts.ArrowFunction,
-  ): TypeNode {
+  private extractReturnType(node: ts.FunctionDeclaration | ts.ArrowFunction): TypeNode {
     if (node.type) {
       return this.parseTypeNode(node.type);
     }
@@ -217,7 +191,7 @@ export class FunctionAnalyzer {
   private parseUnionType(node: ts.UnionTypeNode): TypeNode {
     return {
       kind: 'union',
-      children: node.types.map((t) => this.parseTypeNode(t)),
+      children: node.types.map(t => this.parseTypeNode(t)),
     };
   }
 
@@ -227,7 +201,7 @@ export class FunctionAnalyzer {
   private parseIntersectionType(node: ts.IntersectionTypeNode): TypeNode {
     return {
       kind: 'intersection',
-      children: node.types.map((t) => this.parseTypeNode(t)),
+      children: node.types.map(t => this.parseTypeNode(t)),
     };
   }
 
@@ -247,9 +221,7 @@ export class FunctionAnalyzer {
   private parseTupleType(node: ts.TupleTypeNode): TypeNode {
     return {
       kind: 'tuple',
-      children: node.elements.map((e) =>
-        this.parseTypeNode(e as ts.TypeNode),
-      ),
+      children: node.elements.map(e => this.parseTypeNode(e as ts.TypeNode)),
     };
   }
 
@@ -264,7 +236,7 @@ export class FunctionAnalyzer {
       return {
         kind: 'generic',
         name: typeName,
-        children: node.typeArguments.map((arg) => this.parseTypeNode(arg)),
+        children: node.typeArguments.map(arg => this.parseTypeNode(arg)),
       };
     }
 
@@ -274,9 +246,7 @@ export class FunctionAnalyzer {
   /**
    * Extracts JSDoc metadata from function node
    */
-  private extractJSDocMetadata(
-    node: ts.FunctionDeclaration | ts.ArrowFunction,
-  ): JSDocMetadata {
+  private extractJSDocMetadata(node: ts.FunctionDeclaration | ts.ArrowFunction): JSDocMetadata {
     const metadata: JSDocMetadata = { params: {}, examples: [] };
 
     const jsdocTags = ts.getJSDocTags(node);
@@ -287,9 +257,7 @@ export class FunctionAnalyzer {
 
       if (tagName === 'param' && ts.isJSDocParameterTag(tag)) {
         const paramName = tag.name?.getText() || '';
-        metadata.params[paramName] = this.parseJSDocConstraints(
-          comment || '',
-        );
+        metadata.params[paramName] = this.parseJSDocConstraints(comment || '');
       } else if (tagName === 'returns' || tagName === 'return') {
         metadata.returns = this.parseJSDocConstraints(comment || '');
       } else if (tagName === 'example') {
@@ -321,30 +289,51 @@ export class FunctionAnalyzer {
     for (const pattern of rangePatterns) {
       const match = comment.match(pattern);
       if (match) {
-        constraints.push({
-          type: 'range',
-          value: match[2] ? [Number(match[1]), Number(match[2])] : Number(match[1]),
-          description: match[0],
-        });
+        // Handle both range (2 numbers) and bounds (1 number) patterns
+        const num1 = Number(match[1]);
+
+        if (match[2] !== undefined) {
+          // Range pattern (between X and Y, or X-Y)
+          const num2 = Number(match[2]);
+          constraints.push({
+            type: 'range',
+            min: Math.min(num1, num2),
+            max: Math.max(num1, num2),
+            description: match[0],
+          });
+        } else {
+          // Bounds pattern (>= X or <= X)
+          const matchStr = match[0];
+          const min = matchStr.includes('<=') ? -Infinity : num1;
+          const max = matchStr.includes('>=') ? Infinity : num1;
+          constraints.push({
+            type: 'range',
+            min: Math.max(min, -Number.MAX_SAFE_INTEGER),
+            max: Math.min(max, Number.MAX_SAFE_INTEGER),
+            description: match[0],
+          });
+        }
       }
     }
 
     // Parse length constraints (e.g., "max length 100")
     const lengthMatch = comment.match(/(?:max|min)?\s*length\s*(?:of)?\s*(\d+)/i);
     if (lengthMatch) {
+      const len = Number(lengthMatch[1]);
       constraints.push({
         type: 'length',
-        value: Number(lengthMatch[1]),
+        min: 0,
+        max: len,
         description: lengthMatch[0],
       });
     }
 
     // Parse pattern constraints (e.g., "must match /^[a-z]+$/")
     const patternMatch = comment.match(/(?:match|pattern)[:\s]+\/(.+?)\//);
-    if (patternMatch) {
+    if (patternMatch && patternMatch[1]) {
       constraints.push({
         type: 'pattern',
-        value: patternMatch[1],
+        pattern: patternMatch[1],
         description: patternMatch[0],
       });
     }
@@ -355,10 +344,7 @@ export class FunctionAnalyzer {
   /**
    * Enriches type with JSDoc constraints
    */
-  private enrichWithJSDoc(
-    type: TypeNode,
-    constraints?: TypeConstraint[],
-  ): TypeNode {
+  private enrichWithJSDoc(type: TypeNode, constraints?: TypeConstraint[]): TypeNode {
     if (!constraints || constraints.length === 0) {
       return type;
     }

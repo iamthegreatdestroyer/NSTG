@@ -23,7 +23,6 @@
   },
   "dependencies": {
     "@nstg/shared": "workspace:*",
-    "@nstg/smt-solver": "workspace:*",
     "@nstg/boundary-catalog": "workspace:*"
   },
   "devDependencies": {

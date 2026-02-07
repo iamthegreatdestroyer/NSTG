@@ -9,8 +9,8 @@
  * @license MIT
  */
 
-import { init, Context, Solver, Model, Expr, Sort } from 'z3-solver';
-import type { TypeConstraint, TypeNode, PrimitiveType } from '@nstg/core';
+import type { TypeConstraint } from '@nstg/core';
+import { Context, Expr, init, Model, Solver } from 'z3-solver';
 
 /**
  * Z3 constraint representation after translation
@@ -104,31 +104,41 @@ export class Z3Solver {
 
     try {
       // Initialize Z3 WASM context
-      const { Context } = await init();
-      this.context = new Context('main');
+      const z3Module = await init();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      this.context = new (z3Module as any).Context('main');
+
+      if (!this.context) {
+        throw new Error('Failed to create Z3 context');
+      }
 
       // Create solver with configuration
-      this.solver = new this.context.Solver();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      this.solver = new (this.context as any).Solver() as Solver | null;
+
+      if (!this.solver) {
+        throw new Error('Failed to create Z3 solver');
+      }
 
       // Apply solver options
       if (options.timeout !== undefined) {
-        this.solver.set('timeout', options.timeout);
+        (this.solver as any).set('timeout', options.timeout);
       }
 
       if (options.maxMemory !== undefined) {
-        this.solver.set('max_memory', options.maxMemory);
+        (this.solver as any).set('max_memory', options.maxMemory);
       }
 
       if (options.produceModels !== false) {
-        this.solver.set('model', true);
+        (this.solver as any).set('model', true);
       }
 
       if (options.produceUnsatCores) {
-        this.solver.set('unsat_core', true);
+        (this.solver as any).set('unsat_core', true);
       }
 
       if (options.logic) {
-        this.solver.set('logic', options.logic);
+        (this.solver as any).set('logic', options.logic);
       }
 
       this.initialized = true;
@@ -192,22 +202,23 @@ export class Z3Solver {
           if (constraint.pattern) {
             // Convert simple patterns to Z3 string constraints
             const pattern = constraint.pattern;
+            const contextAny = ctx as any;
 
             if (pattern.startsWith('^') && pattern.endsWith('$')) {
               // Exact match pattern
               const literal = pattern.slice(1, -1);
-              expr = s.eq(ctx.String.val(literal));
+              expr = s.eq(contextAny.String.val(literal));
             } else if (pattern.startsWith('^')) {
               // Prefix pattern
               const prefix = pattern.slice(1);
-              expr = ctx.PrefixOf(ctx.String.val(prefix), s);
+              expr = contextAny.PrefixOf(contextAny.String.val(prefix), s);
             } else if (pattern.endsWith('$')) {
               // Suffix pattern
               const suffix = pattern.slice(0, -1);
-              expr = ctx.SuffixOf(ctx.String.val(suffix), s);
+              expr = contextAny.SuffixOf(contextAny.String.val(suffix), s);
             } else {
               // Contains pattern (fallback)
-              expr = ctx.Contains(s, ctx.String.val(pattern));
+              expr = contextAny.Contains(s, contextAny.String.val(pattern));
             }
           } else {
             // No specific pattern, just a string
@@ -218,10 +229,11 @@ export class Z3Solver {
 
         case 'length': {
           // String/array length constraint
-          const s = ctx.String.const(varName);
+          const contextAny = ctx as any;
+          const s = contextAny.String.const(varName);
           variables.set(varName, s);
 
-          const lengthExpr = ctx.Length(s);
+          const lengthExpr = contextAny.Length(s);
           const constraints: Expr[] = [];
 
           if (constraint.min !== undefined) {
@@ -313,7 +325,6 @@ export class Z3Solver {
     this.ensureInitialized();
 
     const solver = this.solver!;
-    const ctx = this.context!;
 
     try {
       // Apply runtime solver options
@@ -363,14 +374,14 @@ export class Z3Solver {
         let unsatCore: string[] | undefined;
 
         if (options.produceUnsatCores) {
-          const core = solver.unsatCore();
-          unsatCore = core.map(c => c.toString());
+          const core = (solver as any).unsatCore();
+          unsatCore = (core as Expr[]).map((c: Expr) => c.toString());
         }
 
         return {
           status: 'unsat',
           assignments: new Map(),
-          unsatCore,
+          unsatCore: unsatCore ?? undefined,
         };
       } else {
         // Unknown (timeout, resource limit, etc.)

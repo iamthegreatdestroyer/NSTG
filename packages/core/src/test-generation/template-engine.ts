@@ -92,11 +92,13 @@ export class TestTemplateEngine {
     if (groupByRegion) {
       const grouped = this.groupTestsByRegion(testCases);
 
-      for (const [regionId, tests] of grouped.entries()) {
-        const regionName = tests[0].region.type;
+      for (const [_regionId, tests] of grouped.entries()) {
+        const regionName = tests[0]?.region?.type;
+        if (!regionName) continue;
         lines.push(`describe('${regionName}', () => {`);
 
         for (const testCase of tests) {
+          if (!testCase.region) continue;
           const testCode = this.renderTest(testCase, framework, indent, includeComments);
           lines.push(...testCode);
         }
@@ -214,7 +216,7 @@ export class TestTemplateEngine {
    */
   private generateThrowAssertion(
     functionCall: string,
-    expectedValue: unknown,
+    _expectedValue: unknown,
     framework: TestFramework,
     indent: string
   ): string[] {
@@ -375,6 +377,7 @@ export class TestTemplateEngine {
     const grouped = new Map<string, TestCase[]>();
 
     for (const testCase of testCases) {
+      if (!testCase.region) continue;
       const regionId = testCase.region.id;
       if (!grouped.has(regionId)) {
         grouped.set(regionId, []);

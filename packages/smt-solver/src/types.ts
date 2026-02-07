@@ -1,5 +1,3 @@
-import type { Result } from '@nstg/shared';
-
 /**
  * SMT constraint representation
  */

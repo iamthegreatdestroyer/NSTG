@@ -1,4 +1,12 @@
-import type { Result } from '@nstg/shared';
+/**
+ * Core types for NSTG
+ *
+ * Type definitions are re-exported from @nstg/shared to avoid circular dependencies
+ */
+
+// @APEX: Foundational types from @nstg/shared to break circular dependencies
+export type { PrimitiveType, TypeConstraint, TypeKind, TypeNode } from '@nstg/shared';
+import type { TypeConstraint, TypeNode } from '@nstg/shared';
 
 /**
  * Represents a function parameter with type information
@@ -23,42 +31,6 @@ export interface FunctionSignature {
 }
 
 /**
- * Represents a type in the type system
- */
-export interface TypeNode {
-  kind: TypeKind;
-  name?: string;
-  children?: TypeNode[];
-  constraints?: TypeConstraint[];
-}
-
-/**
- * Kind of type node
- */
-export type TypeKind =
-  | 'primitive'
-  | 'literal'
-  | 'union'
-  | 'intersection'
-  | 'array'
-  | 'tuple'
-  | 'object'
-  | 'function'
-  | 'generic'
-  | 'unknown'
-  | 'any'
-  | 'never';
-
-/**
- * Constraint on a type
- */
-export interface TypeConstraint {
-  type: 'range' | 'pattern' | 'length' | 'custom';
-  value: unknown;
-  description?: string;
-}
-
-/**
  * Represents a region in the type space
  */
 export interface TypeSpaceRegion {
@@ -66,6 +38,7 @@ export interface TypeSpaceRegion {
   type: TypeNode;
   constraints: TypeConstraint[];
   cardinality: number | 'infinite';
+  description?: string; // Human-readable description of this region
 }
 
 /**
@@ -75,6 +48,16 @@ export interface TestInput {
   parameterName: string;
   value: unknown;
   typeRegion: TypeSpaceRegion;
+  args: unknown[]; // Array of argument values for the test
+}
+
+/**
+ * Represents a test case output
+ */
+export interface TestOutput {
+  value?: unknown;
+  threw?: Error;
+  duration?: number;
 }
 
 /**
@@ -96,6 +79,11 @@ export interface NegativeSpaceRegion {
   estimatedSize: number | 'infinite';
   priority: number;
   boundaries: BoundaryPoint[];
+  type?: TypeNode; // Type of this region
+  reason?: string; // Why this region is important to test
+  description?: string; // Human-readable description
+  constraints?: TypeConstraint[]; // Additional constraints for this region
+  cardinality?: number | 'infinite'; // Size of this region
 }
 
 /**
@@ -141,13 +129,29 @@ export interface CoverageMetrics {
 }
 
 /**
+ * Represents expected behavior for a test
+ */
+export type TestExpectation = 'should-return' | 'should-throw' | 'should-satisfy' | 'unknown';
+
+/**
  * Generated test case
  */
 export interface GeneratedTest {
   id: string;
   description: string;
   inputs: TestInput[];
-  expectedBehavior: 'return' | 'throw' | 'unknown';
+  expectedBehavior: TestExpectation;
+  expectedValue?: unknown; // Expected return value when should-return
   priority: number;
   source: 'boundary' | 'edge-case' | 'negative-space';
+  region?: NegativeSpaceRegion; // Associated negative space region
+  functionName?: string; // Name of function being tested
+  metadata?: {
+    [key: string]: unknown; // Custom metadata
+  };
 }
+
+/**
+ * Alias for GeneratedTest to support code that uses TestCase name
+ */
+export type TestCase = GeneratedTest;

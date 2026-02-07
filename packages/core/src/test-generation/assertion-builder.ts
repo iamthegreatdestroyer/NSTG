@@ -158,7 +158,7 @@ export class AssertionBuilder {
     functionCall: string,
     testCase: TestCase,
     assertionType: AssertionType,
-    options: AssertionOptions
+    _options: AssertionOptions
   ): string {
     switch (assertionType) {
       case 'throws':
@@ -191,7 +191,7 @@ export class AssertionBuilder {
     functionCall: string,
     testCase: TestCase,
     assertionType: AssertionType,
-    options: AssertionOptions
+    _options: AssertionOptions
   ): string {
     switch (assertionType) {
       case 'throws':
@@ -378,7 +378,7 @@ export class AssertionBuilder {
   /**
    * Check if assertion needs async handling
    */
-  private isAsyncAssertion(testCase: TestCase): boolean {
+  private isAsyncAssertion(_testCase: TestCase): boolean {
     // Check if function signature indicates async
     // This would require FunctionSignature in TestCase
     return false; // Simplified for now
@@ -406,7 +406,7 @@ export class AssertionBuilder {
     }
 
     if (testCase.metadata?.explanation) {
-      comments.push(testCase.metadata.explanation);
+      comments.push(String(testCase.metadata.explanation));
     }
 
     return comments;

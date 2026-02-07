@@ -9,7 +9,7 @@
  * @license MIT
  */
 
-import type { TypeNode, PrimitiveType } from '@nstg/core';
+import type { PrimitiveType, TypeNode } from '@nstg/shared';
 
 /**
  * Edge case with metadata
@@ -371,14 +371,20 @@ export class BoundaryCatalog {
    * @returns Array of edge case values
    */
   getBoundariesForType(typeNode: TypeNode): unknown[] {
-    const pattern = this.patterns.get(typeNode.primitiveType);
+    // @APEX: Guard against undefined primitiveType
+    if (!typeNode.primitiveType) {
+      return [];
+    }
 
+    const pattern = this.patterns.get(typeNode.primitiveType);
     if (!pattern) {
       return [];
     }
 
     // Return values sorted by priority
-    return pattern.edgeCases.sort((a, b) => b.priority - a.priority).map(edge => edge.value);
+    return Array.from(pattern.edgeCases)
+      .sort((a: EdgeCase, b: EdgeCase) => b.priority - a.priority)
+      .map((edge: EdgeCase) => edge.value);
   }
 
   /**

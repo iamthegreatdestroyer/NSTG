@@ -9,8 +9,8 @@
  * @license MIT
  */
 
-import type { TypeNode, TypeConstraint, PrimitiveType } from '@nstg/core';
-import type { EdgeCase, EdgeCaseCategory } from './catalog.js';
+import type { TypeNode } from '@nstg/shared';
+import type { EdgeCase } from './catalog.js';
 import { BoundaryCatalog } from './catalog.js';
 
 /**
@@ -99,7 +99,7 @@ export class BoundaryPatternMatcher {
 
     // Historical matching (if usage data available)
     if (context?.usageData) {
-      matches.push(...this.matchByHistory(typeNode, context.usageData));
+      matches.push(...this.matchByHistory(context.usageData));
     }
 
     // Deduplicate and sort by confidence
@@ -111,6 +111,11 @@ export class BoundaryPatternMatcher {
    * Match by primitive type
    */
   private matchByType(typeNode: TypeNode): PatternMatch[] {
+    // @APEX: Guard against undefined primitiveType
+    if (!typeNode.primitiveType) {
+      return [];
+    }
+
     const edgeCases = this.catalog.getEdgeCasesForType(typeNode.primitiveType);
 
     return Array.from(edgeCases).map(edgeCase => ({
@@ -252,9 +257,19 @@ export class BoundaryPatternMatcher {
 
   /**
    * Match by type constraints
+  /**
+   * Match edge cases based on type constraints
+   *
+   * @param typeNode - Type node with constraints
+   * @returns Array of pattern matches
    */
   private matchByConstraints(typeNode: TypeNode): PatternMatch[] {
     const matches: PatternMatch[] = [];
+
+    // @APEX: Guard clause for undefined constraints
+    if (!typeNode.constraints) {
+      return matches;
+    }
 
     for (const constraint of typeNode.constraints) {
       if (constraint.type === 'range' && typeNode.primitiveType === 'number') {
@@ -304,7 +319,7 @@ export class BoundaryPatternMatcher {
   /**
    * Match by historical usage patterns
    */
-  private matchByHistory(typeNode: TypeNode, usageData: Map<unknown, number>): PatternMatch[] {
+  private matchByHistory(usageData: Map<unknown, number>): PatternMatch[] {
     const matches: PatternMatch[] = [];
     const totalUsage = Array.from(usageData.values()).reduce((sum, count) => sum + count, 0);
 

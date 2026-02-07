@@ -248,9 +248,6 @@ importers:
       '@nstg/shared':
         specifier: workspace:*
         version: link:../shared
-      '@nstg/smt-solver':
-        specifier: workspace:*
-        version: link:../smt-solver
     devDependencies:
       '@nstg/config-eslint':
         specifier: workspace:*
@@ -279,6 +276,9 @@ importers:
 
   packages/smt-solver:
     dependencies:
+      '@nstg/core':
+        specifier: workspace:*
+        version: link:../core
       '@nstg/shared':
         specifier: workspace:*
         version: link:../shared

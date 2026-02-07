@@ -6,14 +6,14 @@
  * regions of behavior.
  */
 
-import type { TypeNode, TypeSpaceRegion, NegativeSpaceRegion, TestInput } from '../types.js';
 import {
+  BooleanSpace,
+  getBoundaryValues,
+  getSpecialValues,
   NumberSpace,
   StringSpace,
-  BooleanSpace,
-  getSpecialValues,
-  getBoundaryValues,
 } from '../type-space/index.js';
+import type { NegativeSpaceRegion, TestInput, TypeNode } from '../types.js';
 
 /**
  * Boundary walk result
@@ -105,7 +105,12 @@ export class BoundaryWalker {
     const boundaryValues = this.generateBoundaryValues(region, includeSpecialValues);
 
     for (const value of boundaryValues.slice(0, maxInputs)) {
-      testInputs.push({ args: [value] });
+      testInputs.push({
+        parameterName: 'boundary',
+        value,
+        typeRegion: region.typeRegion,
+        args: [value],
+      });
       explanations.push(this.explainBoundaryValue(value, region));
       regionsExplored.add(region.id);
     }
@@ -115,7 +120,12 @@ export class BoundaryWalker {
       const adjacentValues = this.generateAdjacentValues(region, maxInputs - testInputs.length);
 
       for (const value of adjacentValues) {
-        testInputs.push({ args: [value] });
+        testInputs.push({
+          parameterName: 'adjacent',
+          value,
+          typeRegion: region.typeRegion,
+          args: [value],
+        });
         explanations.push(`Adjacent to ${region.id}: ${String(value)}`);
       }
     }
@@ -128,7 +138,12 @@ export class BoundaryWalker {
       );
 
       for (const value of combinationValues) {
-        testInputs.push({ args: [value] });
+        testInputs.push({
+          parameterName: 'combination',
+          value,
+          typeRegion: region.typeRegion,
+          args: [value],
+        });
         explanations.push(`Combination for ${region.id}`);
       }
     }
@@ -145,8 +160,8 @@ export class BoundaryWalker {
    * Walk boundaries between multiple regions
    */
   walkBetweenRegions(
-    region1: TypeSpaceRegion,
-    region2: TypeSpaceRegion,
+    region1: NegativeSpaceRegion,
+    region2: NegativeSpaceRegion,
     options: BoundaryWalkOptions = {}
   ): BoundaryWalkResult {
     const { maxInputs = 20 } = options;
@@ -155,11 +170,19 @@ export class BoundaryWalker {
     const explanations: string[] = [];
     const regionsExplored = new Set([region1.id, region2.id]);
 
-    // Get boundary values between the two regions
-    const boundaryValues = getBoundaryValues(region1, region2);
+    // Extract type names for getBoundaryValues (expects string type names like 'number', 'string')
+    const typeName1 = region1.typeRegion.type.name || region1.typeRegion.type.kind;
+    const typeName2 = region2.typeRegion.type.name || region2.typeRegion.type.kind;
 
+    // Get boundary values between the two regions
+    const boundaryValues = getBoundaryValues(String(typeName1), String(typeName2));
     for (const value of boundaryValues.slice(0, maxInputs)) {
-      testInputs.push({ args: [value] });
+      testInputs.push({
+        parameterName: 'boundary',
+        value,
+        typeRegion: region1.typeRegion,
+        args: [value],
+      });
       explanations.push(`Boundary between ${region1.id} and ${region2.id}: ${String(value)}`);
     }
 
@@ -182,14 +205,14 @@ export class BoundaryWalker {
 
     // Determine type from region ID
     if (region.id.startsWith('number-')) {
-      const numberValues = this.numberSpace.generateBoundaryValues(region.constraints);
+      const numberValues = this.numberSpace.generateBoundaryValues(region.typeRegion.constraints);
       values.push(...numberValues);
 
       if (includeSpecialValues) {
         values.push(...(getSpecialValues('number') as number[]));
       }
     } else if (region.id.startsWith('string-')) {
-      const stringValues = this.stringSpace.generateBoundaryValues(region.constraints);
+      const stringValues = this.stringSpace.generateBoundaryValues(region.typeRegion.constraints);
       values.push(...stringValues);
 
       if (includeSpecialValues) {
@@ -244,7 +267,7 @@ export class BoundaryWalker {
       const special = [NaN, Infinity, -Infinity];
 
       for (const boundary of boundaries) {
-        for (const spec of special) {
+        for (const _spec of special) {
           if (values.length >= maxValues) break;
           // In real implementation, this would generate compound test cases
           values.push(boundary);
@@ -328,12 +351,17 @@ export class BoundaryWalker {
         break;
 
       case 'literal':
-        boundaries.push(typeNode.value);
+        // Literal values are stored in constraints or name
+        if (typeNode.name) {
+          boundaries.push(typeNode.name);
+        }
         break;
 
       case 'union':
-        for (const member of typeNode.members) {
-          boundaries.push(...this.generateAllBoundaries(member));
+        if (typeNode.children) {
+          for (const member of typeNode.children) {
+            boundaries.push(...this.generateAllBoundaries(member));
+          }
         }
         break;
 
