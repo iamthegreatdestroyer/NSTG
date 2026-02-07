@@ -43,15 +43,15 @@ jobs:
         run: pnpm test:coverage
         continue-on-error: true
 
-      - name: 📤 Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        if: always()
-        with:
-          files: ./coverage/coverage-final.json
-          flags: unittests
-          name: codecov-umbrella
-          fail_ci_if_error: false
-          verbose: true
+      # - name: 📤 Upload coverage to Codecov
+      #   uses: codecov/codecov-action@v3
+      #   if: always()
+      #   with:
+      #     files: ./coverage/coverage-final.json
+      #     flags: unittests
+      #     name: codecov-umbrella
+      #     fail_ci_if_error: false
+      #     verbose: true
 
       - name: ✅ Test execution summary
         if: success()
