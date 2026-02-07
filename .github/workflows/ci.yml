@@ -6,6 +6,10 @@ on:
     pull_request:
         branches: [main, develop]
 
+permissions:
+    contents: read       # Read repository code
+    pull-requests: read  # Read PR info (for PR context)
+
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
     cancel-in-progress: true
