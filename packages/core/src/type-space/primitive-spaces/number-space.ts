@@ -1,5 +1,5 @@
-import type { TypeNode, TypeConstraint, TypeSpaceRegion } from '../../types.js';
 import { SPECIAL_VALUES } from '@nstg/shared';
+import type { TypeConstraint, TypeNode, TypeSpaceRegion } from '../../types.js';
 
 /**
  * NumberSpace - Handles the universe of number types
@@ -253,7 +253,8 @@ export class NumberSpace {
   private createRangeConstraint(min: number, max: number): TypeConstraint {
     return {
       type: 'range',
-      expression: { min, max },
+      min,
+      max,
     };
   }
 }

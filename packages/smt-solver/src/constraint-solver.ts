@@ -9,8 +9,8 @@
  * @license MIT
  */
 
-import { Z3Solver, Z3SolverOptions, Z3Solution } from './z3-wrapper.js';
-import type { TypeConstraint, TypeNode, PrimitiveType } from '@nstg/core';
+import type { TypeConstraint, TypeNode } from '@nstg/core';
+import { Z3Solution, Z3Solver, Z3SolverOptions } from './z3-wrapper.js';
 
 /**
  * Solver result with generated values
@@ -23,7 +23,7 @@ export interface SolverResult {
   /** Number of solutions found */
   readonly solutionCount: number;
   /** Error message if failed */
-  readonly error?: string;
+  readonly error: string | undefined;
   /** Solver statistics */
   readonly stats: {
     readonly solveTime: number;
@@ -263,7 +263,12 @@ export class ConstraintSolver {
     }
 
     // Get first variable assignment
-    const [varName, value] = Array.from(solution.assignments.entries())[0];
+    const firstEntry = Array.from(solution.assignments.entries())[0];
+    if (!firstEntry) {
+      return undefined;
+    }
+
+    const [, value] = firstEntry;
 
     // Validate against type if provided
     if (typeNode) {
@@ -283,41 +288,45 @@ export class ConstraintSolver {
    * @returns True if valid
    */
   private validateValue(value: unknown, typeNode: TypeNode): boolean {
-    // Basic type checking
-    const primitiveType = typeNode.primitiveType;
+    // Basic type checking based on TypeNode structure
+    // For now, accept any value that matches basic JavaScript types
+    // More sophisticated validation would use TypeNode.constraints
 
-    switch (primitiveType) {
-      case 'number':
-        return typeof value === 'number';
+    switch (typeNode.kind) {
+      case 'primitive': {
+        // Use the name property to infer the actual type
+        const name = typeNode.name?.toLowerCase();
+        if (name === 'number') return typeof value === 'number';
+        if (name === 'string') return typeof value === 'string';
+        if (name === 'boolean') return typeof value === 'boolean';
+        if (name === 'null') return value === null;
+        if (name === 'undefined') return value === undefined;
+        if (name === 'bigint') return typeof value === 'bigint';
+        if (name === 'symbol') return typeof value === 'symbol';
+        // Default: accept any value for primitives without specific name
+        return true;
+      }
 
-      case 'string':
-        return typeof value === 'string';
+      case 'literal':
+        // Literal types should match constraints
+        return true; // Will be validated by constraints
 
-      case 'boolean':
-        return typeof value === 'boolean';
-
-      case 'null':
-        return value === null;
-
-      case 'undefined':
-        return value === undefined;
-
-      case 'bigint':
-        return typeof value === 'bigint';
-
-      case 'symbol':
-        return typeof value === 'symbol';
+      case 'array':
+        return Array.isArray(value);
 
       case 'object':
-      case 'array':
+        return value !== null && typeof value === 'object' && !Array.isArray(value);
+
+      case 'union':
+      case 'intersection':
+      case 'tuple':
       case 'function':
+      case 'generic':
       case 'unknown':
       case 'any':
       case 'never':
-        // Complex types - skip validation for now
-        return true;
-
       default:
+        // For complex types, defer to constraint validation
         return true;
     }
   }
@@ -328,6 +337,12 @@ export class ConstraintSolver {
    * @param status - Result status
    * @param values - Generated values
    * @param startTime - Start timestamp
+  /**
+   * Create solver result
+   *
+   * @param status - Solution status
+   * @param values - Generated values
+   * @param startTime - Time when solving started
    * @param error - Error message if failed
    * @returns Solver result
    */

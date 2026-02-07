@@ -1,0 +1,16 @@
+
+> @nstg/smt-solver@0.0.0 build S:\NSTG\packages\smt-solver
+> tsc
+
+src/z3-wrapper.ts(20,13): error TS2428: All declarations of 'Context' must have identical type parameters.
+src/z3-wrapper.ts(43,13): error TS2428: All declarations of 'Solver' must have identical type parameters.
+src/z3-wrapper.ts(123,20): error TS2314: Generic type 'Context<Name, T>' requires 2 type argument(s).
+src/z3-wrapper.ts(124,19): error TS2314: Generic type 'Solver<Name, T>' requires 2 type argument(s).
+src/z3-wrapper.ts(153,59): error TS2314: Generic type 'Solver<Name, T>' requires 2 type argument(s).
+src/z3-wrapper.ts(362,11): error TS6133: 'ctx' is declared but its value is never read.
+src/z3-wrapper.ts(413,32): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/z3-wrapper.ts(416,9): error TS2375: Type '{ status: "unsat"; assignments: Map<any, any>; unsatCore: string[] | undefined; }' is not assignable to type 'Z3Solution' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'unsatCore' are incompatible.
+    Type 'string[] | undefined' is not assignable to type 'string[]'.
+      Type 'undefined' is not assignable to type 'string[]'.
+ΓÇëELIFECYCLEΓÇë Command failed with exit code 2.

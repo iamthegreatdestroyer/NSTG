@@ -5,8 +5,8 @@
  * Dual-licensed under AGPL-3.0-or-later and Commercial License.
  */
 
-import type { FunctionSignature, NegativeSpaceRegion, TestInput, TestCase } from '../types.js';
 import { BoundaryWalker } from '../negative-space/boundary-walker.js';
+import type { FunctionSignature, NegativeSpaceRegion, TestCase, TestInput } from '../types.js';
 
 /**
  * Options for test generation configuration
@@ -152,6 +152,7 @@ export class TestGenerator {
     // Create test case for each boundary input
     for (let i = 0; i < boundaryResult.testInputs.length; i++) {
       const testInput = boundaryResult.testInputs[i];
+      if (!testInput) continue; // Skip undefined inputs
       const explanation = includeExplanations ? boundaryResult.explanations[i] : undefined;
 
       const testCase = this.createTestCase(region, testInput, explanation);
@@ -186,15 +187,12 @@ export class TestGenerator {
       id: testId,
       description,
       functionName: this.signature.name,
-      inputs: testInput.args,
+      inputs: [testInput as TestInput],
       expectedBehavior,
       expectedValue: this.determineExpectedValue(expectedBehavior, region),
       priority: region.priority,
-      region: {
-        id: region.id,
-        type: region.type,
-        reason: region.reason,
-      },
+      source: 'boundary',
+      region,
       metadata: {
         generated: new Date().toISOString(),
         explanation,
@@ -216,12 +214,12 @@ export class TestGenerator {
     const hasSpecialValues = testInput.args.some(arg => this.isSpecialValue(arg));
 
     // Special values often cause throws or special handling
-    if (hasSpecialValues && region.reason.includes('special')) {
+    if (hasSpecialValues && region.reason?.includes('special')) {
       return 'should-throw';
     }
 
     // Boundary regions typically return values
-    if (region.reason.includes('Boundary')) {
+    if (region.reason?.includes('Boundary')) {
       return 'should-return';
     }
 
@@ -281,7 +279,7 @@ export class TestGenerator {
     }
 
     // Add region context
-    if (region.reason) {
+    if (region.reason?.includes('special')) {
       description += ` - ${region.reason}`;
     }
 
@@ -340,8 +338,10 @@ export class TestGenerator {
       }
 
       // Region tracking
-      const regionId = testCase.region.id;
-      stats.testsByRegion.set(regionId, (stats.testsByRegion.get(regionId) || 0) + 1);
+      if (testCase.region) {
+        const regionId = testCase.region.id;
+        stats.testsByRegion.set(regionId, (stats.testsByRegion.get(regionId) || 0) + 1);
+      }
 
       // Behavior tracking
       if (testCase.expectedBehavior === 'should-return') {
@@ -379,8 +379,8 @@ export class TestGenerator {
 
       case 'boundary-first':
         return sorted.sort((a, b) => {
-          const aBoundary = a.region.reason.includes('Boundary') ? 1 : 0;
-          const bBoundary = b.region.reason.includes('Boundary') ? 1 : 0;
+          const aBoundary = a.region?.reason?.includes('Boundary') ? 1 : 0;
+          const bBoundary = b.region?.reason?.includes('Boundary') ? 1 : 0;
           if (aBoundary !== bBoundary) return bBoundary - aBoundary;
           return b.priority - a.priority;
         });

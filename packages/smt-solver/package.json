@@ -22,6 +22,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@nstg/core": "workspace:*",
     "@nstg/shared": "workspace:*",
     "z3-solver": "^4.12.2"
   },

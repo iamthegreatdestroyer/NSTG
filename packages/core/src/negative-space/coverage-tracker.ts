@@ -5,14 +5,14 @@
  * This represents the "Observable_Behavior" component of the negative space formula.
  */
 
+import { TypeUniverse } from '../type-space/type-universe.js';
 import type {
   FunctionSignature,
   TestInput,
   TestOutput,
-  TypeSpaceRegion,
   TypeNode,
+  TypeSpaceRegion,
 } from '../types.js';
-import { TypeUniverse } from '../type-space/type-universe.js';
 
 /**
  * Coverage statistics for a function
@@ -222,14 +222,16 @@ export class CoverageTracker {
       return this.signature.parameters.every((param, index) => {
         if (index >= input.args.length) return false;
         const value = input.args[index];
-        const regionId = regionIds[index];
+        const regionId = regionIds[index] ?? region.id;
         return this.isValueInRegion(value, regionId, param.type);
       });
     }
 
     // Handle simple regions (single parameter)
     if (this.signature.parameters.length === 1 && input.args.length === 1) {
-      return this.isValueInRegion(input.args[0], region.id, this.signature.parameters[0].type);
+      const param = this.signature.parameters[0];
+      if (!param) return false;
+      return this.isValueInRegion(input.args[0], region.id, param.type);
     }
 
     return false;
@@ -238,7 +240,7 @@ export class CoverageTracker {
   /**
    * Check if a value belongs to a region
    */
-  private isValueInRegion(value: unknown, regionId: string, typeNode: TypeNode): boolean {
+  private isValueInRegion(value: unknown, regionId: string, _typeNode: TypeNode): boolean {
     const valueType = typeof value;
 
     // Number regions
@@ -299,14 +301,16 @@ export class CoverageTracker {
           id: 'void-input',
           description: 'Function with no parameters',
           cardinality: 1,
-          typeNode: { kind: 'never' },
+          type: { kind: 'never' },
           constraints: [],
         },
       ];
     }
 
     if (this.signature.parameters.length === 1) {
-      return this.typeUniverse.calculateUniverse(this.signature.parameters[0].type);
+      const param = this.signature.parameters[0];
+      if (!param) return [];
+      return this.typeUniverse.calculateUniverse(param.type);
     }
 
     // Multiple parameters - calculate Cartesian product
@@ -332,6 +336,7 @@ export class CoverageTracker {
       }
 
       const currentParam = parameterUniverses[index];
+      if (!currentParam) return;
       for (const region of currentParam.regions) {
         generateCombinations(index + 1, [...currentCombination, region]);
       }
@@ -347,7 +352,10 @@ export class CoverageTracker {
   private combineRegions(regions: TypeSpaceRegion[]): TypeSpaceRegion {
     const id = regions.map(r => r.id).join('×');
     const description = regions
-      .map((r, i) => `${this.signature.parameters[i].name}: ${r.description}`)
+      .map((r, i) => {
+        const param = this.signature.parameters[i];
+        return param ? `${param.name}: ${r.description}` : r.description;
+      })
       .join(', ');
 
     let cardinality: number | 'infinite' = 1;
@@ -363,7 +371,7 @@ export class CoverageTracker {
       id,
       description,
       cardinality,
-      typeNode: { kind: 'never' },
+      type: { kind: 'never' },
       constraints: regions.flatMap(r => r.constraints),
     };
   }

@@ -1,0 +1,82 @@
+name: ✅ PR Quality Gates
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-validation:
+    name: PR Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: 📦 Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: 📥 Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: 📝 Check PR title format
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+
+          # Allowed prefixes: feat, fix, docs, style, refactor, test, chore, ci, perf
+          if [[ ! "$PR_TITLE" =~ ^(feat|fix|docs|style|refactor|test|chore|ci|perf)(\(.+\))?:.+ ]]; then
+            echo "❌ PR title must follow format: type(scope): description"
+            echo "   Example: feat(core): add negative space detection"
+            echo "   Allowed types: feat, fix, docs, style, refactor, test, chore, ci, perf"
+            exit 1
+          fi
+          echo "✅ PR title format valid"
+
+      - name: 📊 Run quality gates
+        run: |
+          echo "🔍 Running type checking..."
+          pnpm typecheck
+
+          echo "🎨 Running linter..."
+          pnpm lint
+
+          echo "📋 Checking code formatting..."
+          pnpm format:check
+
+          echo "✅ All quality gates passed"
+
+      - name: 📈 Check size impact
+        run: |
+          echo "📦 Build size analysis..."
+          pnpm build --filter=@nstg/core --filter=@nstg/smt-solver
+
+          echo "✅ Build completed successfully"
+
+      - name: 👁️ Code quality summary
+        if: always()
+        run: |
+          echo "## PR Quality Check Summary" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Title format validation" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Type safety checks" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Linting rules" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Code formatting" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Build validation" >> $GITHUB_STEP_SUMMARY

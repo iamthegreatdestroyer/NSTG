@@ -14,5 +14,6 @@ export const DEFAULT_CONFIG = {
 export const SPECIAL_VALUES = {
   NUMBER: [NaN, Infinity, -Infinity, 0, -0, Number.MAX_VALUE, Number.MIN_VALUE],
   STRING: ['', '\0', '\u200B', '\uFEFF'],
+  ARRAY: [[], [undefined], [null], Array(1000)],
   OBJECT: [null, undefined],
 } as const;
