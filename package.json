@@ -76,5 +76,9 @@
     "*.{json,md}": [
       "prettier --write"
     ]
+  },
+  "volta": {
+    "node": "20.11.0",
+    "pnpm": "8.15.0"
   }
 }
