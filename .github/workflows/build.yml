@@ -10,6 +10,10 @@ on:
       - main
       - develop
 
+permissions:
+  contents: read       # Read repository code
+  actions: write       # Upload artifacts
+
 concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
