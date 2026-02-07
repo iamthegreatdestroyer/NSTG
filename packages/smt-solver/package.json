@@ -31,6 +31,6 @@
     "@nstg/config-typescript": "workspace:*",
     "@types/node": "^25.2.1",
     "typescript": "^5.3.3",
-    "vitest": "^1.2.0"
+    "vitest": "^4.0.18"
   }
 }
