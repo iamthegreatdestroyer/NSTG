@@ -3,9 +3,11 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 2022,
     sourceType: 'module',
+    project: true,
   },
   extends: [
     'eslint:recommended',
+    'next/core-web-vitals',
     'plugin:@typescript-eslint/recommended',
     'plugin:import/recommended',
     'plugin:import/typescript',
