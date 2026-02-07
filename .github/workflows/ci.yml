@@ -59,7 +59,7 @@ jobs:
                   cache: "pnpm"
             - run: pnpm install --frozen-lockfile
             - run: pnpm test --coverage
-            - uses: codecov/codecov-action@v4
+            - uses: codecov/codecov-action@v5
               if: matrix.os == 'ubuntu-latest' && matrix.node == 20
               with:
                   token: ${{ secrets.CODECOV_TOKEN }}
