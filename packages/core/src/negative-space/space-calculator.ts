@@ -7,15 +7,14 @@
  * "dark matter" of untested valid inputs.
  */
 
+import { TypeUniverse } from '../type-space/type-universe.js';
 import type {
   FunctionSignature,
-  TypeNode,
-  TypeSpaceRegion,
   NegativeSpaceRegion,
   TestInput,
+  TypeNode,
+  TypeSpaceRegion,
 } from '../types.js';
-import { TypeUniverse } from '../type-space/type-universe.js';
-import { TypeLattice } from '../type-space/type-lattice.js';
 
 /**
  * Result of negative space calculation
@@ -63,11 +62,9 @@ export interface NegativeSpaceResult {
  */
 export class NegativeSpaceCalculator {
   private readonly typeUniverse: TypeUniverse;
-  private readonly typeLattice: TypeLattice;
 
   constructor() {
     this.typeUniverse = new TypeUniverse();
-    this.typeLattice = new TypeLattice();
   }
 
   /**
@@ -94,7 +91,10 @@ export class NegativeSpaceCalculator {
     // Step 4: Calculate cardinalities and coverage metrics
     const totalCardinality = this.calculateTotalCardinality(universeRegions);
     const coveredCardinality = this.calculateTotalCardinality(coveredRegions);
-    const negativeCardinality = this.calculateTotalCardinality(negativeSpaceRegions);
+    // Extract typeRegion from NegativeSpaceRegion for calculateTotalCardinality compatibility
+    const negativeCardinality = this.calculateTotalCardinality(
+      negativeSpaceRegions.map(r => r.typeRegion)
+    );
 
     const coveragePercentage = this.calculateCoveragePercentage(
       coveredCardinality,
@@ -124,7 +124,7 @@ export class NegativeSpaceCalculator {
           id: 'void-input',
           description: 'Function with no parameters',
           cardinality: 1,
-          typeNode: { kind: 'never' },
+          type: { kind: 'never' },
           constraints: [],
         },
       ];
@@ -132,7 +132,12 @@ export class NegativeSpaceCalculator {
 
     if (signature.parameters.length === 1) {
       // Single parameter = direct universe calculation
-      return this.typeUniverse.calculateUniverse(signature.parameters[0].type);
+      const paramType = signature.parameters[0]?.type;
+      if (!paramType) {
+        // Fallback to unknown if type is missing
+        return this.typeUniverse.calculateUniverse({ kind: 'unknown' });
+      }
+      return this.typeUniverse.calculateUniverse(paramType);
     }
 
     // Multiple parameters = Cartesian product of parameter universes
@@ -165,6 +170,7 @@ export class NegativeSpaceCalculator {
 
       // Recursive case: add each region of current parameter
       const currentParam = parameterUniverses[index];
+      if (!currentParam?.regions) return; // Skip if parameter or regions undefined
       for (const region of currentParam.regions) {
         generateCombinations(index + 1, [...currentCombination, region]);
       }
@@ -182,7 +188,12 @@ export class NegativeSpaceCalculator {
     parameters: Array<{ name: string; type: TypeNode }>
   ): TypeSpaceRegion {
     const id = regions.map(r => r.id).join('×');
-    const description = regions.map((r, i) => `${parameters[i].name}: ${r.description}`).join(', ');
+    const description = regions
+      .map((r, i) => {
+        const param = parameters[i];
+        return param ? `${param.name}: ${r.description}` : `param${i}: ${r.description}`;
+      })
+      .join(', ');
 
     // Cardinality of Cartesian product = product of individual cardinalities
     let cardinality: number | 'infinite' = 1;
@@ -198,7 +209,7 @@ export class NegativeSpaceCalculator {
       id,
       description,
       cardinality,
-      typeNode: { kind: 'never' }, // Compound node - not representable as single TypeNode
+      type: { kind: 'never' }, // Compound node - not representable as single TypeNode
       constraints: regions.flatMap(r => r.constraints),
     };
   }
@@ -246,15 +257,19 @@ export class NegativeSpaceCalculator {
       // Compound region from Cartesian product
       const regionIds = region.id.split('×');
       return parameters.every((param, index) => {
+        if (!param) return false;
         const value = input.args[index];
         const regionId = regionIds[index];
+        if (regionId === undefined) return false;
         return this.isValueInRegion(value, regionId, param.type);
       });
     }
 
     // For simple regions (single parameter), check the value directly
     if (parameters.length === 1 && input.args.length === 1) {
-      return this.isValueInRegion(input.args[0], region.id, parameters[0].type);
+      const param = parameters[0];
+      if (!param) return false;
+      return this.isValueInRegion(input.args[0], region.id, param.type);
     }
 
     return false;
@@ -263,7 +278,7 @@ export class NegativeSpaceCalculator {
   /**
    * Check if a value belongs to a specific region
    */
-  private isValueInRegion(value: unknown, regionId: string, typeNode: TypeNode): boolean {
+  private isValueInRegion(value: unknown, regionId: string, _typeNode: TypeNode): boolean {
     // Delegate to type-space modules for region membership checking
     // This is a simplified implementation - real version would use NumberSpace, StringSpace, etc.
 
@@ -323,13 +338,20 @@ export class NegativeSpaceCalculator {
     }
 
     return {
-      ...region,
+      id: `${region.id}-gap-${index}`,
+      typeRegion: region,
+      estimatedSize: region.cardinality,
       priority,
+      boundaries: [],
       reason: isBoundary
         ? 'Boundary region - high bug probability'
         : region.cardinality === 'infinite'
           ? 'Infinite region - requires sampling strategy'
           : 'Untested region in type space',
+      type: region.type,
+      constraints: region.constraints,
+      description: region.description || 'Untested region', // @TENSOR: Provide default to satisfy exactOptionalPropertyTypes
+      cardinality: region.cardinality,
     };
   }
 

@@ -18,7 +18,7 @@ export class BooleanSpace {
    *
    * For boolean type, the universe is always { true, false }
    */
-  calculateUniverse(typeNode: TypeNode): TypeSpaceRegion[] {
+  calculateUniverse(_typeNode: TypeNode): TypeSpaceRegion[] {
     return [
       {
         id: 'boolean-true',

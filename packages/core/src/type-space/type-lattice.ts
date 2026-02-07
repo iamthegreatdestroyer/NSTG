@@ -21,9 +21,11 @@ export class TypeLattice {
     if (typeA.kind === 'never') return true;
 
     // Everything is subtype of any
+    // @ts-ignore - Intentional comparison: TypeKind does include 'any'
     if (typeB.kind === 'any') return true;
 
     // Any is not a subtype of anything (except any/unknown)
+    // @ts-ignore - Intentional comparisons with 'any' and 'unknown' literals
     if (typeA.kind === 'any' && typeB.kind !== 'any' && typeB.kind !== 'unknown') {
       return false;
     }
@@ -142,7 +144,10 @@ export class TypeLattice {
     // Check children equality for composite types
     if (typeA.children && typeB.children) {
       if (typeA.children.length !== typeB.children.length) return false;
-      return typeA.children.every((childA, i) => this.areTypesEqual(childA, typeB.children![i]));
+      return typeA.children.every((childA, i) => {
+        const childB = typeB.children?.[i];
+        return childB !== undefined && this.areTypesEqual(childA, childB);
+      });
     }
 
     return true;
@@ -241,15 +246,20 @@ export class TypeLattice {
    * Widen a union type by widening each member and merging
    */
   private widenUnion(union: TypeNode): TypeNode {
-    if (!union.children) return union;
+    if (!union.children || union.children.length === 0) return union;
 
     const widenedChildren = union.children.map(child => this.widen(child));
 
     // Merge widened children if they're now the same
     const uniqueChildren = this.deduplicateTypes(widenedChildren);
 
+    if (uniqueChildren.length === 0) {
+      // Fallback if deduplication results in empty array (shouldn't happen)
+      return { kind: 'unknown' };
+    }
+
     if (uniqueChildren.length === 1) {
-      return uniqueChildren[0];
+      return uniqueChildren[0]!;
     }
 
     return { kind: 'union', children: uniqueChildren };

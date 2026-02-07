@@ -1,5 +1,5 @@
-import type { TypeNode, TypeConstraint, TypeSpaceRegion } from '../../types.js';
 import { SPECIAL_VALUES } from '@nstg/shared';
+import type { TypeConstraint, TypeNode, TypeSpaceRegion } from '../../types.js';
 
 /**
  * StringSpace - Handles the universe of string types
@@ -115,7 +115,7 @@ export class StringSpace {
   isValueInRegion(value: string, region: TypeSpaceRegion): boolean {
     // Check special value regions
     if (region.id === 'string-special') {
-      return SPECIAL_VALUES.STRING.includes(value);
+      return SPECIAL_VALUES.STRING.includes(value as (typeof SPECIAL_VALUES.STRING)[number]);
     }
 
     // Check constraints
@@ -308,7 +308,8 @@ export class StringSpace {
   private createLengthConstraint(min: number, max: number): TypeConstraint {
     return {
       type: 'length',
-      expression: { min, max },
+      min,
+      max,
     };
   }
 }

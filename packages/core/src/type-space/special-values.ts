@@ -15,13 +15,13 @@ export function getSpecialValues(typeName: string): unknown[] {
 
   switch (normalizedType) {
     case 'number':
-      return SPECIAL_VALUES.NUMBER;
+      return [...SPECIAL_VALUES.NUMBER];
     case 'string':
-      return SPECIAL_VALUES.STRING;
+      return [...SPECIAL_VALUES.STRING];
     case 'array':
-      return SPECIAL_VALUES.ARRAY;
+      return [[], [0], ['']];
     case 'object':
-      return SPECIAL_VALUES.OBJECT;
+      return [...SPECIAL_VALUES.OBJECT];
     default:
       return [];
   }
@@ -38,7 +38,7 @@ export function isSpecialValue(value: unknown): boolean {
 
   // Check string special values
   if (typeof value === 'string') {
-    return SPECIAL_VALUES.STRING.includes(value);
+    return SPECIAL_VALUES.STRING.includes(value as (typeof SPECIAL_VALUES.STRING)[number]);
   }
 
   // Check array special values
@@ -48,7 +48,9 @@ export function isSpecialValue(value: unknown): boolean {
 
   // Check object special values
   if (typeof value === 'object' && value !== null) {
-    return SPECIAL_VALUES.OBJECT.some(special => objectsEqual(value, special));
+    return SPECIAL_VALUES.OBJECT.some(
+      special => special !== null && special !== undefined && objectsEqual(value, special)
+    );
   }
 
   return false;

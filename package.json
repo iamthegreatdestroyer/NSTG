@@ -46,7 +46,14 @@
     "release": "changeset publish",
     "version": "changeset version",
     "benchmark": "tsx scripts/benchmark.ts",
-    "download-z3": "tsx scripts/download-z3.ts"
+    "download-z3": "tsx scripts/download-z3.ts",
+    "dev-assistant": "tsx scripts/dev-assistant.ts",
+    "validate:copilot": "tsx scripts/validate-copilot-context.ts",
+    "meta-test": "tsx scripts/meta-test-generator.ts",
+    "meta-test:analyze": "tsx scripts/meta-test-generator.ts --analyze-only",
+    "meta-test:improve": "tsx scripts/meta-test-generator.ts --auto-improve",
+    "meta-test:verbose": "tsx scripts/meta-test-generator.ts --verbose",
+    "coverage:diff": "tsx scripts/calculate-coverage-diff.ts"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.0",
