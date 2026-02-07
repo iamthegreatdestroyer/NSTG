@@ -35,7 +35,7 @@ export interface Z3Solution {
   /** Variable assignments */
   readonly assignments: Map<string, unknown>;
   /** Unsat core if unsatisfiable */
-  readonly unsatCore?: string[];
+  readonly unsatCore: string[] | undefined;
 }
 
 /**
@@ -180,21 +180,28 @@ export class Z3Solver {
           const x = ctx.Int.const(varName);
           variables.set(varName, x);
 
-          const constraints: Expr[] = [];
+          const constraints: (Expr | undefined)[] = [];
           if (constraint.min !== undefined) {
-            constraints.push(ctx.Int.val(constraint.min).le(x));
+            const minExpr = ctx.Int.val(constraint.min).le(x);
+            if (minExpr !== undefined) constraints.push(minExpr);
           }
           if (constraint.max !== undefined) {
-            constraints.push(x.le(ctx.Int.val(constraint.max)));
+            const maxExpr = x.le(ctx.Int.val(constraint.max));
+            if (maxExpr !== undefined) constraints.push(maxExpr);
           }
 
-          expr = constraints.length === 1 ? constraints[0] : ctx.And(...constraints);
+          const validConstraints = constraints.filter((c): c is Expr => c !== undefined);
+          expr =
+            validConstraints.length === 1
+              ? validConstraints[0]
+              : (ctx.And as any)(...validConstraints);
           break;
         }
 
         case 'pattern': {
           // String pattern matching (approximate using string constraints)
-          const s = ctx.String.const(varName);
+          const contextAny = ctx as any;
+          const s = contextAny.String?.const(varName) || contextAny.Const(varName, 'String');
           variables.set(varName, s);
 
           // Z3 string theory has limited regex support
@@ -202,23 +209,26 @@ export class Z3Solver {
           if (constraint.pattern) {
             // Convert simple patterns to Z3 string constraints
             const pattern = constraint.pattern;
-            const contextAny = ctx as any;
+            const stringVal = contextAny.String?.val(pattern) || contextAny.StringVal(pattern);
 
             if (pattern.startsWith('^') && pattern.endsWith('$')) {
               // Exact match pattern
               const literal = pattern.slice(1, -1);
-              expr = s.eq(contextAny.String.val(literal));
+              const literalVal = contextAny.String?.val(literal) || contextAny.StringVal(literal);
+              expr = s.eq(literalVal) || ctx.Bool.val(true);
             } else if (pattern.startsWith('^')) {
               // Prefix pattern
               const prefix = pattern.slice(1);
-              expr = contextAny.PrefixOf(contextAny.String.val(prefix), s);
+              const prefixVal = contextAny.String?.val(prefix) || contextAny.StringVal(prefix);
+              expr = contextAny.PrefixOf?.(prefixVal, s) || ctx.Bool.val(true);
             } else if (pattern.endsWith('$')) {
               // Suffix pattern
               const suffix = pattern.slice(0, -1);
-              expr = contextAny.SuffixOf(contextAny.String.val(suffix), s);
+              const suffixVal = contextAny.String?.val(suffix) || contextAny.StringVal(suffix);
+              expr = contextAny.SuffixOf?.(suffixVal, s) || ctx.Bool.val(true);
             } else {
               // Contains pattern (fallback)
-              expr = contextAny.Contains(s, contextAny.String.val(pattern));
+              expr = contextAny.Contains?.(s, stringVal) || ctx.Bool.val(true);
             }
           } else {
             // No specific pattern, just a string
@@ -230,20 +240,26 @@ export class Z3Solver {
         case 'length': {
           // String/array length constraint
           const contextAny = ctx as any;
-          const s = contextAny.String.const(varName);
+          const s = contextAny.String?.const(varName) || contextAny.Const(varName, 'String');
           variables.set(varName, s);
 
-          const lengthExpr = contextAny.Length(s);
-          const constraints: Expr[] = [];
+          const lengthExpr = contextAny.Length?.(s) || ctx.Int.val(0);
+          const constraints: (Expr | undefined)[] = [];
 
           if (constraint.min !== undefined) {
-            constraints.push(ctx.Int.val(constraint.min).le(lengthExpr));
+            const minExpr = ctx.Int.val(constraint.min).le(lengthExpr);
+            if (minExpr !== undefined) constraints.push(minExpr);
           }
           if (constraint.max !== undefined) {
-            constraints.push(lengthExpr.le(ctx.Int.val(constraint.max)));
+            const maxExpr = lengthExpr.le(ctx.Int.val(constraint.max));
+            if (maxExpr !== undefined) constraints.push(maxExpr);
           }
 
-          expr = constraints.length === 1 ? constraints[0] : ctx.And(...constraints);
+          const validConstraints = constraints.filter((c): c is Expr => c !== undefined);
+          expr =
+            validConstraints.length === 1
+              ? validConstraints[0]
+              : (ctx.And as any)(...validConstraints);
           break;
         }
 
@@ -261,29 +277,32 @@ export class Z3Solver {
             const x = ctx.Int.const(varName);
             variables.set(varName, x);
 
-            const disjuncts = constraint.values.map(v => x.eq(ctx.Int.val(v as number)));
-            expr = disjuncts.length === 1 ? disjuncts[0] : ctx.Or(...disjuncts);
+            const disjuncts = constraint.values
+              .map(v => {
+                const eqExpr = x.eq(ctx.Int.val(v as number));
+                return eqExpr !== undefined ? eqExpr : null;
+              })
+              .filter((d: Expr | null): d is Expr => d !== null);
+            expr = disjuncts.length === 1 ? disjuncts[0] : (ctx.Or as any)(...disjuncts);
           } else if (typeof firstValue === 'string') {
-            const s = ctx.String.const(varName);
+            const contextAny = ctx as any;
+            const s = contextAny.String?.const(varName) || contextAny.Const(varName, 'String');
             variables.set(varName, s);
 
-            const disjuncts = constraint.values.map(v => s.eq(ctx.String.val(v as string)));
-            expr = disjuncts.length === 1 ? disjuncts[0] : ctx.Or(...disjuncts);
+            const stringVal = (v: string) => contextAny.String?.val(v) || contextAny.StringVal(v);
+            const disjuncts = constraint.values
+              .map(v => {
+                const eqExpr = s.eq(stringVal(v as string));
+                return eqExpr !== undefined ? eqExpr : null;
+              })
+              .filter((d: Expr | null): d is Expr => d !== null);
+            expr = disjuncts.length === 1 ? disjuncts[0] : (ctx.Or as any)(...disjuncts);
           } else {
             // Unsupported enum type, use boolean
             const b = ctx.Bool.const(varName);
             variables.set(varName, b);
             expr = ctx.Bool.val(true);
           }
-          break;
-        }
-
-        case 'custom': {
-          // Custom predicate - limited support
-          // For complex predicates, we create unconstrained variables
-          const x = ctx.Int.const(varName);
-          variables.set(varName, x);
-          expr = ctx.Bool.val(true); // No constraint, allow any value
           break;
         }
 
@@ -342,7 +361,7 @@ export class Z3Solver {
       for (const constraint of constraints) {
         const z3Constraint = this.translateConstraint(constraint);
         z3Constraints.push(z3Constraint);
-        solver.add(z3Constraint.expr);
+        solver.add(z3Constraint.expr as any);
 
         // Collect all variables
         for (const [name, expr] of z3Constraint.variables) {
@@ -368,26 +387,35 @@ export class Z3Solver {
           status: 'sat',
           model,
           assignments,
+          unsatCore: undefined,
         };
       } else if (result === 'unsat') {
         // Extract unsat core if enabled
-        let unsatCore: string[] | undefined;
+        let unsatCore: string[] | undefined = undefined;
 
         if (options.produceUnsatCores) {
-          const core = (solver as any).unsatCore();
-          unsatCore = (core as Expr[]).map((c: Expr) => c.toString());
+          try {
+            const core = (solver as any).unsatCore?.();
+            if (core !== undefined && Array.isArray(core)) {
+              unsatCore = (core as Expr[]).map((c: Expr) => c.toString());
+            }
+          } catch {
+            // If unsat core extraction fails, leave it undefined
+            unsatCore = undefined;
+          }
         }
 
         return {
           status: 'unsat',
           assignments: new Map(),
-          unsatCore: unsatCore ?? undefined,
+          unsatCore,
         };
       } else {
         // Unknown (timeout, resource limit, etc.)
         return {
           status: 'unknown',
           assignments: new Map(),
+          unsatCore: undefined,
         };
       }
     } catch (error) {
