@@ -75,7 +75,7 @@
     "@nstg/config-typescript": "workspace:*",
     "@types/node": "^25.2.1",
     "@types/vscode": "^1.109.0",
-    "esbuild": "^0.27.2",
+    "esbuild": "^0.27.3",
     "typescript": "^5.3.3",
     "vsce": "^2.15.0",
     "vitest": "^4.0.18"
